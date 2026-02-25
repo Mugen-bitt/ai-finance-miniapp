@@ -1,6 +1,9 @@
 fastapi
-uvicorn
+uvicorn[standard]
 psycopg2-binary
 sqlalchemy
+alembic
 python-dotenv
-python-telegram-bot
+python-multipart
+httpx
+pydantic[email]
