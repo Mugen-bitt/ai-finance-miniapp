@@ -9,19 +9,34 @@ Telegram Mini App для голосового финансового учёта 
 
 ------------------------------------------------------------------------
 
-## Текущий статус (2026-02-25)
+## Текущий статус (2026-03-01)
 
 ### Готово:
 - [x] Backend (FastAPI) — API для транзакций, авторизация через Telegram
 - [x] PostgreSQL — база данных в Docker
 - [x] Frontend (React + Vite) — Dashboard, добавление транзакций, история
 - [x] Docker Compose — всё работает на Raspberry Pi
-- [x] Cloudflare Tunnel — публичный HTTPS доступ
+- [x] Telegram Bot создан в @BotFather
+- [x] TELEGRAM_BOT_TOKEN добавлен в .env
+- [x] Menu Button настроена (открывает Mini App)
+
+### Проблема:
+- Cloudflare Quick Tunnel нестабилен — соединение постоянно рвётся (ошибка 530)
+- Временные URL (trycloudflare.com) не держат соединение в текущей сети
 
 ### Следующие шаги:
-- [ ] Настроить Telegram Mini App в @BotFather
+- [ ] **Решить проблему с туннелем** (варианты ниже)
 - [ ] Добавить голосовой ввод (STT + LLM)
 - [ ] Графики и аналитика
+
+### Варианты решения туннеля:
+1. **Постоянный Cloudflare Tunnel с доменом** (рекомендуется)
+   - Купить домен (~$1-2 за .xyz)
+   - Добавить в Cloudflare
+   - Создать Named Tunnel — стабильный, постоянный URL
+2. **VPS сервер** (~$5/мес)
+   - Перенести docker compose на VPS
+   - Прямой доступ без туннелей
 
 ------------------------------------------------------------------------
 
@@ -51,19 +66,16 @@ cloudflared tunnel --url http://localhost:3002 --protocol http2
 
 ------------------------------------------------------------------------
 
-## Настройка Telegram Mini App (TODO)
+## Настройка Telegram Mini App
 
-1. Открыть @BotFather в Telegram
-2. `/newbot` — создать бота, сохранить токен
-3. `/newapp` — создать Mini App:
-   - Название: `AI Finance`
-   - Web App URL: `https://xxx.trycloudflare.com` (URL от cloudflared)
-   - Short name: `finance`
-4. Добавить токен бота в `.env` на Pi:
-   ```bash
-   nano ~/ai-finance-miniapp/.env
-   # TELEGRAM_BOT_TOKEN=your_real_token
-   ```
+### Выполнено:
+1. [x] Создан бот в @BotFather (`/newbot`)
+2. [x] Токен добавлен в `.env` на Pi
+3. [x] Настроена Menu Button (`/mybots` → Bot Settings → Menu Button)
+
+### Осталось:
+- [ ] Настроить стабильный туннель (см. "Варианты решения туннеля" выше)
+- [ ] Обновить URL в Menu Button на постоянный
 
 ------------------------------------------------------------------------
 
