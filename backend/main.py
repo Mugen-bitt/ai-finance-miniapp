@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 from database import engine, Base
 from routers import transactions
+from routers import bot
 
 load_dotenv()
 
@@ -36,6 +37,7 @@ app.add_middleware(
 
 # Подключение роутеров
 app.include_router(transactions.router, prefix="/api")
+app.include_router(bot.router, prefix="/api")
 
 
 @app.get("/")
