@@ -1,5 +1,5 @@
 """
-LLM сервис для парсинга текста транзакции с использованием Claude API.
+LLM сервис для парсинга текста транзакции с использованием Google Gemini API.
 """
 
 import os
@@ -8,8 +8,8 @@ import httpx
 from typing import Optional, Dict, Any
 from datetime import date, timedelta
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 # Доступные категории
 EXPENSE_CATEGORIES = ["Продукты", "Транспорт", "Развлечения", "Здоровье", "Одежда", "Рестораны", "Связь", "ЖКХ", "Другое"]
@@ -39,65 +39,56 @@ SYSTEM_PROMPT = f"""Ты помощник для учёта финансов. Т
 "Потратил 500 на продукты" → {{"type": "expense", "amount": 500, "category": "Продукты", "description": null, "date": null}}
 "Получил зарплату 80 тысяч" → {{"type": "income", "amount": 80000, "category": "Зарплата", "description": null, "date": null}}
 "Такси 350 рублей" → {{"type": "expense", "amount": 350, "category": "Транспорт", "description": "такси", "date": null}}
-"Вчера купил кофе за 200" → {{"type": "expense", "amount": 200, "category": "Рестораны", "description": "кофе", "date": "<вчерашняя дата>"}}
 
 Верни ТОЛЬКО валидный JSON без дополнительного текста."""
 
 
 async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
     """
-    Парсит текст и извлекает данные транзакции с помощью Claude.
-
-    Args:
-        text: Текст с описанием транзакции
-
-    Returns:
-        Словарь с данными транзакции или None
+    Парсит текст и извлекает данные транзакции с помощью Gemini.
     """
-    if not ANTHROPIC_API_KEY:
-        raise ValueError("ANTHROPIC_API_KEY not set in environment")
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY not set in environment")
 
-    # Добавляем контекст текущей даты
     today = date.today()
     yesterday = today - timedelta(days=1)
     user_message = f"Сегодня {today.strftime('%Y-%m-%d')}. Вчера было {yesterday.strftime('%Y-%m-%d')}.\n\nТекст: {text}"
 
     request_body = {
-        "model": "claude-3-haiku-20240307",
-        "max_tokens": 256,
-        "system": SYSTEM_PROMPT,
-        "messages": [
-            {"role": "user", "content": user_message}
-        ]
+        "contents": [
+            {
+                "parts": [
+                    {"text": SYSTEM_PROMPT + "\n\n" + user_message}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 256
+        }
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
-            ANTHROPIC_API_URL,
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json"
-            },
+            f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
             json=request_body
         )
 
         if response.status_code != 200:
-            print(f"Claude API error: {response.status_code} - {response.text}")
+            print(f"Gemini API error: {response.status_code} - {response.text}")
             return None
 
         result = response.json()
 
         # Извлекаем текст ответа
-        content = result.get("content", [])
-        if not content:
+        try:
+            response_text = result["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError):
+            print(f"Unexpected Gemini response: {result}")
             return None
-
-        response_text = content[0].get("text", "")
 
         # Парсим JSON из ответа
         try:
-            # Убираем возможные markdown блоки
             json_text = response_text.strip()
             if json_text.startswith("```"):
                 json_text = json_text.split("```")[1]
@@ -107,7 +98,6 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
 
             parsed = json.loads(json_text)
 
-            # Валидация обязательных полей
             if parsed is None:
                 return None
             if not isinstance(parsed.get("amount"), (int, float)):
