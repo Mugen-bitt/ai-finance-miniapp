@@ -32,18 +32,5 @@ services:
     ports:
       - "3002:80"
 
-  bot:
-    build: ./backend
-    container_name: finance_bot
-    restart: always
-    env_file:
-      - .env
-    depends_on:
-      - db
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
-    command: python bot_polling.py
-
 volumes:
   postgres_data:

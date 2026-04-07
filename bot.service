@@ -1,0 +1,18 @@
+[Unit]
+Description=AI Finance Telegram Bot
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=mugen
+WorkingDirectory=/home/mugen/ai-finance-miniapp/backend
+Environment="DATABASE_URL=postgresql://finance_user:finance_pass@localhost:5433/finance_db"
+Environment="TELEGRAM_BOT_TOKEN=8560318296:AAEgNEiKbUSkuE0BNmCRie5O42rpirWtK_c"
+Environment="GOOGLE_API_KEY=your_google_api_key"
+Environment="ANTHROPIC_API_KEY=your_anthropic_api_key"
+ExecStart=/usr/bin/python3 bot_polling.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
