@@ -242,9 +242,22 @@ async def polling_loop():
 
 async def main():
     """Точка входа."""
-    # Удаляем webhook если был установлен
-    async with httpx.AsyncClient() as client:
-        await client.get(f"{TELEGRAM_API_URL}/deleteWebhook")
+    print("🤖 Starting bot...")
+
+    # Ждём пока сеть станет доступна
+    for attempt in range(10):
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(f"{TELEGRAM_API_URL}/deleteWebhook")
+                if response.status_code == 200:
+                    print("✅ Connected to Telegram API")
+                    break
+        except Exception as e:
+            print(f"⏳ Waiting for network... attempt {attempt + 1}/10 ({e})")
+            await asyncio.sleep(5)
+    else:
+        print("❌ Could not connect to Telegram API after 10 attempts")
+        return
 
     await polling_loop()
 
