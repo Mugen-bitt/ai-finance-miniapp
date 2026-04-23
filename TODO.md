@@ -2,15 +2,7 @@
 
 ## Срочно
 
-### 1. Gemini API — нужно пополнить/получить ключ
-- **Статус:** Ошибка 429 (quota exceeded) / 404 (model not found)
-- **Проблема:** Бесплатный лимит Gemini API исчерпан
-- **Решение:**
-  - Создать новый API ключ: https://aistudio.google.com/apikey
-  - Или пополнить баланс Google AI
-  - Или использовать другой LLM (OpenAI, Claude)
-
-### 2. Cloudflare туннель для Mini App (ошибка 530)
+### 1. Cloudflare туннель для Mini App (ошибка 530)
 - Вариант 1: Постоянный Cloudflare Tunnel с доменом (~$1-2 за .xyz)
 - Вариант 2: VPS сервер (~$5/мес)
 
@@ -20,24 +12,28 @@
 
 ### Готово:
 - [x] Telegram Bot с long polling (не требует публичный URL!)
-- [x] Google Speech-to-Text интеграция (free tier 60 мин/мес)
-- [x] Gemini API парсинг текста в транзакцию (заменён с Claude)
+- [x] OpenAI Whisper для распознавания речи
+- [x] OpenAI GPT-4o-mini для парсинга текста в транзакцию
 - [x] Обработка голосовых И текстовых сообщений
-- [x] Бот работает как systemd сервис (не в Docker из-за проблем с сетью)
+- [x] Бот работает в Docker контейнере
 
-### Запуск бота на Pi:
+### Запуск на Pi:
 ```bash
-cd ~/ai-finance-miniapp/backend
-source venv/bin/activate
-python bot_polling.py
+cd ~/ai-finance-miniapp
+git pull
+docker compose up -d --build
 ```
 
-### Конфигурация (.env в backend/):
+### Проверка логов бота:
+```bash
+docker compose logs -f bot
 ```
-DATABASE_URL=postgresql://finance_user:finance_pass@localhost:5433/finance_db
+
+### Конфигурация (.env):
+```
+DATABASE_URL=postgresql://finance_user:finance_pass@db:5432/finance_db
 TELEGRAM_BOT_TOKEN=<токен>
-GOOGLE_API_KEY=<ключ для STT>
-GEMINI_API_KEY=<ключ для LLM парсинга>
+OPENAI_API_KEY=<ключ OpenAI>
 ```
 
 ---
@@ -65,7 +61,7 @@ GEMINI_API_KEY=<ключ для LLM парсинга>
 - [x] Telegram WebApp SDK интеграция
 
 ### Инфраструктура
-- [x] Docker Compose (db, backend, frontend)
+- [x] Docker Compose (db, backend, bot, frontend)
 - [x] PostgreSQL в контейнере
 - [x] Работает на Raspberry Pi
 - [x] Telegram Bot создан (@BotFather)
@@ -75,6 +71,4 @@ GEMINI_API_KEY=<ключ для LLM парсинга>
 
 ## Известные проблемы
 
-1. **Docker на Pi не имеет доступа к интернету** — бот запускается вне Docker через venv
-2. **Mini App недоступен** — нужен публичный URL (туннель или VPS)
-3. **Gemini API лимиты** — бесплатный тариф быстро заканчивается
+1. **Mini App недоступен** — нужен публичный URL (туннель или VPS)

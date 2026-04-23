@@ -18,10 +18,24 @@ services:
     restart: always
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql://finance_user:finance_pass@db:5432/finance_db
     depends_on:
       - db
     ports:
       - "8000:8000"
+
+  bot:
+    build: ./backend
+    container_name: finance_bot
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://finance_user:finance_pass@db:5432/finance_db
+    depends_on:
+      - db
+    command: ["python", "bot_polling.py"]
 
   frontend:
     build: ./frontend

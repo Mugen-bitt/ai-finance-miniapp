@@ -1,5 +1,5 @@
 """
-LLM сервис для парсинга текста транзакции с использованием Google Gemini API.
+LLM сервис для парсинга текста транзакции с использованием OpenAI GPT API.
 """
 
 import os
@@ -8,8 +8,8 @@ import httpx
 from typing import Optional, Dict, Any
 from datetime import date, timedelta
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
 
 # Доступные категории
 EXPENSE_CATEGORIES = ["Продукты", "Транспорт", "Развлечения", "Здоровье", "Одежда", "Рестораны", "Связь", "ЖКХ", "Другое"]
@@ -45,46 +45,46 @@ SYSTEM_PROMPT = f"""Ты помощник для учёта финансов. Т
 
 async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
     """
-    Парсит текст и извлекает данные транзакции с помощью Gemini.
+    Парсит текст и извлекает данные транзакции с помощью OpenAI GPT.
     """
-    if not GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY not set in environment")
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY not set in environment")
 
     today = date.today()
     yesterday = today - timedelta(days=1)
     user_message = f"Сегодня {today.strftime('%Y-%m-%d')}. Вчера было {yesterday.strftime('%Y-%m-%d')}.\n\nТекст: {text}"
 
     request_body = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": SYSTEM_PROMPT + "\n\n" + user_message}
-                ]
-            }
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_message}
         ],
-        "generationConfig": {
-            "temperature": 0.1,
-            "maxOutputTokens": 256
-        }
+        "temperature": 0.1,
+        "max_tokens": 256
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
-            f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
+            OPENAI_CHAT_URL,
+            headers={
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json"
+            },
             json=request_body
         )
 
         if response.status_code != 200:
-            print(f"Gemini API error: {response.status_code} - {response.text}")
+            print(f"OpenAI API error: {response.status_code} - {response.text}")
             return None
 
         result = response.json()
 
         # Извлекаем текст ответа
         try:
-            response_text = result["candidates"][0]["content"]["parts"][0]["text"]
+            response_text = result["choices"][0]["message"]["content"]
         except (KeyError, IndexError):
-            print(f"Unexpected Gemini response: {result}")
+            print(f"Unexpected OpenAI response: {result}")
             return None
 
         # Парсим JSON из ответа

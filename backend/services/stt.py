@@ -1,20 +1,20 @@
 """
-Speech-to-Text сервис с использованием Google Cloud Speech-to-Text API.
+Speech-to-Text сервис с использованием OpenAI Whisper API.
 Telegram отправляет голосовые в формате OGG (Opus codec).
 """
 
 import os
-import base64
+import tempfile
 import httpx
 from typing import Optional
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-GOOGLE_STT_URL = "https://speech.googleapis.com/v1/speech:recognize"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_STT_URL = "https://api.openai.com/v1/audio/transcriptions"
 
 
 async def transcribe_audio(audio_data: bytes) -> Optional[str]:
     """
-    Распознать речь из аудио файла.
+    Распознать речь из аудио файла с помощью OpenAI Whisper.
 
     Args:
         audio_data: Аудио данные в формате OGG/Opus (от Telegram)
@@ -22,44 +22,38 @@ async def transcribe_audio(audio_data: bytes) -> Optional[str]:
     Returns:
         Распознанный текст или None
     """
-    if not GOOGLE_API_KEY:
-        raise ValueError("GOOGLE_API_KEY not set in environment")
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY not set in environment")
 
-    # Кодируем аудио в base64
-    audio_content = base64.b64encode(audio_data).decode("utf-8")
+    # Сохраняем во временный файл (Whisper API требует файл)
+    with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp_file:
+        tmp_file.write(audio_data)
+        tmp_path = tmp_file.name
 
-    request_body = {
-        "config": {
-            "encoding": "OGG_OPUS",
-            "sampleRateHertz": 48000,
-            "languageCode": "ru-RU",
-            "model": "default",
-            "enableAutomaticPunctuation": True,
-        },
-        "audio": {
-            "content": audio_content
-        }
-    }
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            with open(tmp_path, "rb") as audio_file:
+                response = await client.post(
+                    OPENAI_STT_URL,
+                    headers={
+                        "Authorization": f"Bearer {OPENAI_API_KEY}"
+                    },
+                    files={
+                        "file": ("voice.ogg", audio_file, "audio/ogg")
+                    },
+                    data={
+                        "model": "whisper-1",
+                        "language": "ru"
+                    }
+                )
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(
-            f"{GOOGLE_STT_URL}?key={GOOGLE_API_KEY}",
-            json=request_body
-        )
+            if response.status_code != 200:
+                print(f"OpenAI Whisper error: {response.status_code} - {response.text}")
+                return None
 
-        if response.status_code != 200:
-            print(f"Google STT error: {response.status_code} - {response.text}")
-            return None
+            result = response.json()
+            return result.get("text", "")
 
-        result = response.json()
-
-        # Извлекаем текст из ответа
-        results = result.get("results", [])
-        if not results:
-            return None
-
-        alternatives = results[0].get("alternatives", [])
-        if not alternatives:
-            return None
-
-        return alternatives[0].get("transcript", "")
+    finally:
+        # Удаляем временный файл
+        os.unlink(tmp_path)
