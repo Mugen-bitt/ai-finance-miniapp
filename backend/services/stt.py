@@ -10,6 +10,7 @@ from typing import Optional
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_STT_URL = "https://api.openai.com/v1/audio/transcriptions"
+PROXY_URL = os.getenv("PROXY_URL", "http://127.0.0.1:10808")
 
 
 async def transcribe_audio(audio_data: bytes) -> Optional[str]:
@@ -31,7 +32,7 @@ async def transcribe_audio(audio_data: bytes) -> Optional[str]:
         tmp_path = tmp_file.name
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=60.0, proxy=PROXY_URL) as client:
             with open(tmp_path, "rb") as audio_file:
                 response = await client.post(
                     OPENAI_STT_URL,

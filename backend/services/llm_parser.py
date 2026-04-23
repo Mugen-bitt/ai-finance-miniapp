@@ -10,6 +10,7 @@ from datetime import date, timedelta
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
+PROXY_URL = os.getenv("PROXY_URL", "http://127.0.0.1:10808")
 
 # Доступные категории
 EXPENSE_CATEGORIES = ["Продукты", "Транспорт", "Развлечения", "Здоровье", "Одежда", "Рестораны", "Связь", "ЖКХ", "Другое"]
@@ -64,7 +65,7 @@ async def parse_transaction_text(text: str) -> Optional[Dict[str, Any]]:
         "max_tokens": 256
     }
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, proxy=PROXY_URL) as client:
         response = await client.post(
             OPENAI_CHAT_URL,
             headers={
